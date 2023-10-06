@@ -19,6 +19,7 @@ from labscript_devices.PulseBlaster_No_DDS import (
 )
 from labscript.labscript import PseudoclockDevice, config
 import numpy as np
+import logging
 
 from blacs.tab_base_classes import Worker
 
@@ -328,6 +329,9 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
     core_clock_freq = 100.0
     uberglobals =  globals()
     def init(self,uberglobals=uberglobals):
+#         log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
+#         self.logger = logging.getLogger(log_name) # Jeff's debugging code
+
         self.programming_scheme = 'pb_stop_programming/STOP'
         exec('global pb_read_status; from pynqapi import *',uberglobals)
         global h5py; import labscript_utils.h5_lock, h5py
@@ -357,17 +361,25 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         self.time_based_shot_end_time = None
 
     def check_status(self):
+#         self.logger.debug('checking status') # Jeff's debugging code
         if self.waits_pending:
+#             self.logger.debug('waits are pending') # Jeff's debugging code
             try:
+#                 self.logger.debug('waiting') # Jeff's debugging code
                 self.all_waits_finished.wait(self.h5file, timeout=0)
                 self.waits_pending = False
             except zprocess.TimeoutError:
+#                 self.logger.debug('Timeout error') # Jeff's debugging code
                 pass
         if self.time_based_shot_end_time is not None:
+#             self.logger.debug('There is a time based shot') # Jeff's debugging code
             import time
             time_based_shot_over = time.time() > self.time_based_shot_end_time
+#             self.logger.debug('Is time based shot over?: %s'%str(time_based_shot_over)) # Jeff's debugging code
         else:
+#             self.logger.debug('There is no time based shot') # Jeff's debugging code
             time_based_shot_over = None
+#         self.logger.debug('Returning pb_read_status') # Jeff's debugging code
         return pb_read_status(), self.waits_pending, time_based_shot_over
 
     # @define_state(MODE_MANUAL|MODE_BUFFERED|MODE_TRANSITION_TO_BUFFERED|MODE_TRANSITION_TO_MANUAL,True)

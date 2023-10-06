@@ -295,7 +295,10 @@ class Arduino_DDSWorker(Worker):
         # Store the final values to for use during transition_to_static:
         self.final_values = {}
         table_data = None
-        with h5py.File(h5file) as hdf5_file:
+        
+        # Jeff edit to fix error in blacs tab when running experiments from runmanager
+        #with h5py.File(h5file) as hdf5_file:
+        with h5py.File(h5file,mode='r') as hdf5_file:
             group = hdf5_file['/devices/'+device_name]
             # Now program the buffered outputs:
             if 'TABLE_DATA' in group:

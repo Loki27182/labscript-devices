@@ -374,7 +374,8 @@ class NI_DAQmxOutputWorker(Worker):
                 if not static:
                     try:
                         # Wait for task completion with a 1 second timeout:
-                        task.WaitUntilTaskDone(1)
+                        #print(name)
+                        task.WaitUntilTaskDone(10)
                     finally:
                         # Log where we were up to in sample generation, regardless of
                         # whether the above succeeded:
