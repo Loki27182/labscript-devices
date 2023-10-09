@@ -154,9 +154,43 @@ class IMAQdx_Camera(object):
             _value = _value.encode('utf8')
         try:
             nv.IMAQdxSetAttribute(self.imaqdx, name.encode('utf8'), _value)
+            #print(name + " set to " + str(value) +"\r\n")
         except Exception as e:
-            # Add some info to the exception:
+            # Add some info to the exception - including whether the attribute exists and is writable:
             msg = f"failed to set attribute {name} to {value}"
+
+            #attributes = nv.IMAQdxEnumerateAttributes2(self.imaqdx, b'', nv.IMAQdxAttributeVisibilityAdvanced)
+            #isWritable = None
+            #for a in attributes:
+            #    n = a.Name.decode('utf8')
+            #    try:
+            #        v = self.get_attribute(n)
+            #    except:
+            #        pass
+#
+            #    msg += n
+            #    if v:
+            #        msg += ": " + str(v)
+#
+            #    msg += "\r\n"
+#
+            #    if n==name:
+            #        isWritable = a.Writable
+            #        break
+#
+            #if isWritable is not None:
+            #    msg += ": Attribute exists, and "
+            #    if isWritable:
+            #        msg += "is writable...weird"
+            #        raise Exception(msg) from e
+            #    else:
+            #        msg += "isn't writable...skipping"
+#
+            #else:
+            #    msg += ": Attribute doesn't exist"
+            #    raise Exception(msg) from e
+#
+            #print(msg)
             raise Exception(msg) from e
 
     def get_attribute_names(self, visibility_level, writeable_only=True):
@@ -262,6 +296,7 @@ class IMAQdxCameraWorker(Worker):
         self.camera = self.get_camera()
         print("Setting attributes...")
         self.smart_cache = {}
+        self.set_attributes_smart(self.manual_mode_camera_attributes)
         self.set_attributes_smart(self.camera_attributes)
         self.set_attributes_smart(self.manual_mode_camera_attributes)
         print("Initialisation complete")
