@@ -318,6 +318,13 @@ class NI_DAQmxOutputWorker(Worker):
                 written,
                 None,
             )
+            
+            #with open(r'C:\Users\jqisr\labscript-suite\logs\analog.log','a') as f:
+            #    f.write(self.MAX_name + r' = [')
+            #    for a in AO_table:
+            #        f.write(str(a) + ',')
+            #    #f.seek(-1,2)
+            #    f.write(r'];' + '\n')
 
             # Go!
             self.AO_task.StartTask()

@@ -32,7 +32,7 @@ class Pyncmaster(PulseBlaster_No_DDS):
                         # This might bring the max clock frequency down to 25MHz
     clock_resolution = 11e-9 #s (20 was the default)
     n_flags = 64
-    core_clock_freq = 100.0 #MHz
+    core_clock_freq = 50.0 #MHz
     def __init__(self,*args,**kwargs):
         super(Pyncmaster, self).__init__(*args,**kwargs) #It was PulseBlaster_No_DDS
         self.programming_scheme = 'pb_stop_programming/STOP'
@@ -40,7 +40,7 @@ class Pyncmaster(PulseBlaster_No_DDS):
         self.min_ticks_in_frame = 65536 # 4 32-bit words for each instruction
                                         # Total size of a frame is 16k trerefore
                                         # total number of ticks is 4*16k = 64k
-        self.dma_clock = 100 #MHz
+        self.dma_clock = 50 #MHz
         self.safety_margin = 1.05 * self.core_clock_freq/self.dma_clock       # More than 1, depends on ratio between clock
                                                                               # rate of state machine and the DMA clock
         self.framelength = 16384        #2^14 = 16384
@@ -326,7 +326,7 @@ class PyncmasterTab(Pulseblaster_No_DDS_Tab):
 
 
 class PyncmasterWorker(PulseblasterNoDDSWorker):
-    core_clock_freq = 100.0
+    core_clock_freq = 50.0
     uberglobals =  globals()
     def init(self,uberglobals=uberglobals):
 #         log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
@@ -483,7 +483,7 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
 
             # Now for the pulse program:
             pulse_program = group['PULSE_PROGRAM'][2:]
-            print(pulse_program)
+            #print(pulse_program)
 
             #Let's get the final state of the pulseblaster. z's are the args we don't need:
             flags,z,z,z = pulse_program[-1]
@@ -583,12 +583,12 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
             return return_values
 
     def start_run(self):
-        print("start_run()")
+        #print("start_run()")
         if self.programming_scheme == 'pb_start/BRANCH':
-            pb_stop_programming() #Added by JQI
+            pb_stop_programming(trans_to_buffered=True) #Added by JQI
             pb_start()
         elif self.programming_scheme == 'pb_stop_programming/STOP':
-            pb_stop_programming()
+            pb_stop_programming(trans_to_buffered=True)
             pb_start()
         else:
             raise ValueError('invalid programming_scheme: %s'%str(self.programming_scheme))
