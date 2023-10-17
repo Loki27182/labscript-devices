@@ -21,26 +21,47 @@ from labscript.labscript import PseudoclockDevice, config
 import numpy as np
 import logging
 
+from labscript import (
+    set_passed_properties
+)
+
 from blacs.tab_base_classes import Worker
 
 
 class Pyncmaster(PulseBlaster_No_DDS):
     description = 'Pyncmaster'
-    clock_limit = 50e6 # This needs to be checked against the following issues:
+    #clock_limit = 20e6 # This needs to be checked against the following issues:
                         #  1) The actual minimum instruction lenght is still 2 cycles in most cases
                         #  2) A clock must have a high time and low time
                         # This might bring the max clock frequency down to 25MHz
-    clock_resolution = 11e-9 #s (20 was the default)
+    #clock_resolution = 50e-9 #s (20 was the default)
     n_flags = 64
-    core_clock_freq = 100.0 #MHz
-    def __init__(self,*args,**kwargs):
+    #core_clock_freq = 20.0 #MHz
+    @set_passed_properties({"connection_table_properties": ["clock_rate"]})
+    def __init__(self,clock_rate=20,*args,**kwargs):
+        #clock_defined = False
+        #for k,v in kwargs.items():
+        #    if k=='clock_rate':
+        #        clock_defined = True
+        #        self.core_clock_freq = v
+        #if not clock_defined:
+        #    
+        #    kwargs['clock_rate'] = 20
+        self.clock_rate = clock_rate
+        self.core_clock_freq = self.clock_rate
+        self.clock_limit = self.core_clock_freq*1e6
+        self.clock_resolution = 1/self.clock_limit
+        
+        #self.logger.debug('Initializing main Pyncblaster object:')
+
         super(Pyncmaster, self).__init__(*args,**kwargs) #It was PulseBlaster_No_DDS
+ 
         self.programming_scheme = 'pb_stop_programming/STOP'
         self.max_instructions = 8192000
         self.min_ticks_in_frame = 65536 # 4 32-bit words for each instruction
                                         # Total size of a frame is 16k trerefore
                                         # total number of ticks is 4*16k = 64k
-        self.dma_clock = 100 #MHz
+        self.dma_clock = 20 #MHz
         self.safety_margin = 1.05 * self.core_clock_freq/self.dma_clock       # More than 1, depends on ratio between clock
                                                                               # rate of state machine and the DMA clock
         self.framelength = 16384        #2^14 = 16384
@@ -319,6 +340,9 @@ class PyncmasterTab(Pulseblaster_No_DDS_Tab):
     # Capabilities
     num_DO = 64
     def __init__(self,*args,**kwargs):
+        #log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterTab") # Jeff's debugging code
+        #self.logger = logging.getLogger(log_name) # Jeff's debugging code
+        
         if not hasattr(self,'device_worker_class'):
             self.device_worker_class = PyncmasterWorker
         Pulseblaster_No_DDS_Tab.__init__(self,*args,**kwargs )
@@ -326,16 +350,20 @@ class PyncmasterTab(Pulseblaster_No_DDS_Tab):
 
 
 class PyncmasterWorker(PulseblasterNoDDSWorker):
-    core_clock_freq = 100.0
+    core_clock_freq = 20.0
     uberglobals =  globals()
     def init(self,uberglobals=uberglobals):
-#         log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
-#         self.logger = logging.getLogger(log_name) # Jeff's debugging code
+        #log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
+        #self.logger = logging.getLogger(log_name) # Jeff's debugging code
 
         self.programming_scheme = 'pb_stop_programming/STOP'
         exec('global pb_read_status; from pynqapi import *',uberglobals)
         global h5py; import labscript_utils.h5_lock, h5py
         global zprocess; import zprocess
+
+        #self.logger.debug('Initializing PyncmasterWorker:')
+        #for k, v in self.__dict__.items():
+        #    self.logger.debug(k + ": " + str(type(v)) + ": " + str(v))
 
         self.pb_start = pb_start
         self.pb_stop = pb_stop
@@ -352,7 +380,9 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
 
         pb_select_board(self.board_number)
         pb_init()
-        pb_core_clock(self.core_clock_freq)
+        #self.logger.debug(f'Setting Jane clock to {self.clock_rate}')
+        self.core_clock_freq = pb_core_clock(self.clock_rate)
+        #self.logger.debug(f'Jane clock set to {self.core_clock_freq[0]}')
 
         # This is only set to True on a per-shot basis, so set it to False
         # for manual mode. Set associated attributes to None:
@@ -447,9 +477,9 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
             # Write the first two lines of the pulse program:
             pb_start_programming(PULSE_PROGRAM)
             # Line zero is a wait:
-            pb_inst_pbonly(flags, CONTINUE, 0, 100)
+            pb_inst_pbonly(flags, CONTINUE, 0, 200)
             # Line one is a brach to line 0:
-            pb_inst_pbonly(flags, STOP, 0, 100)
+            pb_inst_pbonly(flags, STOP, 0, 200)
             pb_stop_programming()
 
             # Now we're waiting on line zero, so when we start() we'll go to
@@ -501,11 +531,17 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
                     initial_flags += '1'
                 else:
                     initial_flags += '0'
-            pb_inst_pbonly(initial_flags,CONTINUE,0,100)
-            pb_inst_pbonly(initial_flags,CONTINUE,0,100)
+            pb_inst_pbonly(initial_flags,CONTINUE,0,200)
+            pb_inst_pbonly(initial_flags,CONTINUE,0,200)
 
             for args in pulse_program:
-                pb_inst_pbonly(*args)
+                try:
+                    pb_inst_pbonly(*args)
+                except Exception as ex:
+                    for arg in args:
+                        #self.logger.debug(str(arg))
+                        pass
+                    raise ex
             # pb_stop_programming()
 
             # End of modified section

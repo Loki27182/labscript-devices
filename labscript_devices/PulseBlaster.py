@@ -139,7 +139,7 @@ class PulseBlaster(PseudoclockDevice):
         )
     def __init__(self, name, trigger_device=None, trigger_connection=None, board_number=0, firmware = '',
                  programming_scheme='pb_start/BRANCH', pulse_width='symmetric', max_instructions=4000,
-                 time_based_stop_workaround=False, time_based_stop_workaround_extra_time=0.5, **kwargs):
+                 time_based_stop_workaround=False, time_based_stop_workaround_extra_time=0.5, clock_rate = 20, **kwargs):
         PseudoclockDevice.__init__(self, name, trigger_device, trigger_connection, **kwargs)
         self.BLACS_connection = board_number
         # TODO: Implement capability checks based on firmware revision of PulseBlaster

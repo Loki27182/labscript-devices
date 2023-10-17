@@ -98,14 +98,25 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
         connection_object = self.settings['connection_table'].find_by_name(self.device_name)
         self.board_number = int(connection_object.BLACS_connection)
         
+        #self.logger.debug(str(connection_object._properties))
         # And which scheme we're using for buffered output programming and triggering:
         # (default values for backward compat with old connection tables)
         self.programming_scheme = connection_object.properties.get('programming_scheme', 'pb_start/BRANCH')
         
+        #dev_settings = self.settings['device']
+        #self.logger.debug('Tab creating worker...')
+        #self.logger.debug(str(self.settings))
+
+        #connection_table_properties = connection_object.properties
+
+        #for k, v in connection_table_properties.items():
+        #    self.logger.debug(v)
+        self.set_clock_to = connection_object.properties.get('clock_rate',20)
         # Create and set the primary worker
         self.create_worker("main_worker",self.device_worker_class,{'board_number':self.board_number,
                                                                    'num_DO': self.num_DO,
-                                                                   'programming_scheme': self.programming_scheme})
+                                                                   'programming_scheme': self.programming_scheme,
+                                                                   'clock_rate': self.set_clock_to})    # Added by Jeff
         self.primary_worker = "main_worker"
         
         # Set the capabilities of this device
@@ -287,9 +298,9 @@ class PulseblasterNoDDSWorker(Worker):
         # Write the first two lines of the pulse program:
         pb_start_programming(PULSE_PROGRAM)
         # Line zero is a wait:
-        pb_inst_pbonly(flags, WAIT, 0, 100)
+        pb_inst_pbonly(flags, WAIT, 0, 200)
         # Line one is a brach to line 0:
-        pb_inst_pbonly(flags, BRANCH, 0, 100)
+        pb_inst_pbonly(flags, BRANCH, 0, 200)
         pb_stop_programming()
         
         # Now we're waiting on line zero, so when we start() we'll go to
@@ -366,13 +377,13 @@ class PulseblasterNoDDSWorker(Worker):
 
                 if self.programming_scheme == 'pb_start/BRANCH':
                     # Line zero is a wait on the final state of the program in 'pb_start/BRANCH' mode 
-                    pb_inst_pbonly(flags,WAIT,0,100)
+                    pb_inst_pbonly(flags,WAIT,0,200)
                 else:
                     # Line zero otherwise just contains the initial flags 
-                    pb_inst_pbonly(initial_flags,CONTINUE,0,100)
+                    pb_inst_pbonly(initial_flags,CONTINUE,0,200)
                                         
                 # Line one is a continue with the current front panel values:
-                pb_inst_pbonly(initial_flags, CONTINUE, 0, 100)
+                pb_inst_pbonly(initial_flags, CONTINUE, 0, 200)
                 # Now the rest of the program:
                 if fresh or len(self.smart_cache['pulse_program']) != len(pulse_program) or \
                 (self.smart_cache['pulse_program'] != pulse_program).any():
