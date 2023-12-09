@@ -358,6 +358,7 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
 
         self.programming_scheme = 'pb_stop_programming/STOP'
         exec('global pb_read_status; from pynqapi import *',uberglobals)
+        #exec('global pb_read_status; from janeFunctions import *',uberglobals)
         global h5py; import labscript_utils.h5_lock, h5py
         global zprocess; import zprocess
 
@@ -622,9 +623,11 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         #print("start_run()")
         if self.programming_scheme == 'pb_start/BRANCH':
             pb_stop_programming(trans_to_buffered=True) #Added by JQI
+            #pb_stop_programming()
             pb_start()
         elif self.programming_scheme == 'pb_stop_programming/STOP':
             pb_stop_programming(trans_to_buffered=True)
+            #pb_stop_programming()
             pb_start()
         else:
             raise ValueError('invalid programming_scheme: %s'%str(self.programming_scheme))
