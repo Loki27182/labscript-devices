@@ -255,7 +255,7 @@ class Arduino_Single_DDSWorker(Worker):
             initial_baud_rate = self.default_baud_rate
         else:
             initial_baud_rate = self.baud_rate
-
+        # print('Creating connection: port=%s, baud=%s'%(self.com_port,initial_baud_rate)) # Added for debugging
         self.connection = serial.Serial(
             self.com_port, baudrate=initial_baud_rate, timeout=0.1
         )
@@ -265,7 +265,9 @@ class Arduino_Single_DDSWorker(Worker):
         # For each DDS channel,
         for i in range(1):
             # and for each subchnl in the DDS,
-            self.connection.write(b'@ %d\r\n'%i)
+            command = b'@ %d\r\n'%i
+            self.connection.write(command)
+            # print(command) # Added for debugging
             #if front_panel_values['channel %d'%i]['rampon'] == 1:
             #    ramplow = front_panel_values['channel %d'%i]['ramplow']
             #    ramphigh = front_panel_values['channel %d'%i]['ramphigh']
@@ -275,7 +277,9 @@ class Arduino_Single_DDSWorker(Worker):
             for subchnl in ['freq']:
                     # Program the sub channel
                 self.program_static(i,subchnl,front_panel_values['channel %d'%i][subchnl])
-        self.connection.write(b'$\r\n')
+        command = b'$\r\n'
+        self.connection.write(command)
+        # print(command) # Added for debugging
 
     def program_static(self,channel,type,value):
         if type == 'freq':
@@ -283,6 +287,7 @@ class Arduino_Single_DDSWorker(Worker):
         else:
             raise TypeError(type)
         self.connection.write(command)
+        # print(command) # Added for debugging
         # Now that a static update has been done, we'd better invalidate the saved STATIC_DATA:
         self.smart_cache['STATIC_DATA'] = None
 
@@ -314,9 +319,13 @@ class Arduino_Single_DDSWorker(Worker):
                                                        oldtable[i]['ramplow%d'%ddsno], oldtable[i]['ramphigh%d'%ddsno],
                                                        oldtable[i]['rampdur%d'%ddsno], oldtable[i]['rampon%d'%ddsno]):
                         if line['rampon%d'%ddsno] == 1:
-                            self.connection.write(b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno]))
+                            command = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
+                            self.connection.write(command)
+                            # print(command) # Added for debugging
                         else:
-                            self.connection.write(b'f %f\r\n'%line['freq%d'%ddsno])
+                            command = b'f %f\r\n'%line['freq%d'%ddsno]
+                            self.connection.write(command)
+                            # print(command) # Added for debugging
 
             # Store the table for future smart programming comparisons:
             try:
@@ -332,11 +341,17 @@ class Arduino_Single_DDSWorker(Worker):
             self.final_values['channel 1'] = {}
             self.final_values['channel 0']['freq'] = data[-1]['freq0']
             self.final_values['channel 1']['freq'] = data[-1]['freq1']
+            # print('Waiting on read') # Added for debugging
             self.connection.readline()
+            # print('Read complete') # Added for debugging
             if self.update_mode == 'synchronous':
                 # Transition to hardware synchronous updates:
-                self.connection.write(b'$\r\n')
+                command = b'$\r\n'
+                self.connection.write(command)
+                # print(command) # Added for debugging
+                # print('Waiting on read') # Added for debugging
                 self.connection.readline()
+                # print('Read complete') # Added for debugging
                 # We are now waiting for a rising edge to trigger the output
                 # of the second table pair (first of the experiment)
             elif self.update_mode == 'asynchronous':
@@ -372,10 +387,14 @@ class Arduino_Single_DDSWorker(Worker):
         # only program the channels that we need to
         for ddsnumber in DDSs:
             channel_values = values['channel %d'%ddsnumber]
-            self.connection.write(b'@ %d\r\n'%ddsnumber)
+            command = b'@ %d\r\n'%ddsnumber
+            self.connection.write(command)
+            # print(command) # Added for debugging
             for subchnl in ['freq']:
                 self.program_static(ddsnumber,subchnl,channel_values[subchnl])
-            self.connection.write(b'$\r\n')
+            command = b'$\r\n'
+            self.connection.write(command)
+            # print(command) # Added for debugging
 
         # return True to indicate we successfully transitioned back to manual mode
         return True
@@ -384,11 +403,16 @@ class Arduino_Single_DDSWorker(Worker):
 
         # return to the default baud rate
         if self.default_baud_rate is not None:
-            self.connection.write(b'%s\r\n' % bauds[self.default_baud_rate])
+            command = b'%s\r\n' % bauds[self.default_baud_rate]
+            self.connection.write(command)
+            # print(command) # Added for debugging
             time.sleep(0.1)
+            # print('Waiting on read') # Added for debugging
             self.connection.readlines()
+            # print('Read complete') # Added for debugging
 
         self.connection.close()
+        # print('Connection closed') # Added for debugging
 
 
 
