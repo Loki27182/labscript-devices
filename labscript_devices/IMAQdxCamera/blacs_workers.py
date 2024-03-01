@@ -157,9 +157,9 @@ class IMAQdx_Camera(object):
         if isinstance(_value, str):
             _value = _value.encode('utf8')
         try:
-            self.logger.info("Setting Camera Attribute: " + name + ": " + str(value))
+            # self.logger.info("Setting Camera Attribute: " + name + ": " + str(value))
             nv.IMAQdxSetAttribute(self.imaqdx, name.encode('utf8'), _value)
-            self.logger.info("Camera Attribute Set: " + name + ": " + str(value))
+            # self.logger.info("Camera Attribute Set: " + name + ": " + str(value))
             #print(name + " set to " + str(value) +"\r\n")
         except Exception as e:
             # Add some info to the exception - including whether the attribute exists and is writable:

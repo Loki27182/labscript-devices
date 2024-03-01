@@ -250,8 +250,10 @@ class Arduino_DDSWorker(Worker):
         global serial; import serial
         global socket; import socket
         global h5py; import labscript_utils.h5_lock, h5py
+        import logging
         self.smart_cache = {'STATIC_DATA': None, 'TABLE_DATA': ''}
-
+        self.logger = logging.getLogger('BLACS.%s.state_queue'%('red_AOM_arduino'))
+        
         if self.default_baud_rate is not None:
             initial_baud_rate = self.default_baud_rate
         else:
@@ -297,7 +299,7 @@ class Arduino_DDSWorker(Worker):
         table_data = None
         
         # Jeff edit to fix error in blacs tab when running experiments from runmanager
-        #with h5py.File(h5file) as hdf5_file:
+        # with h5py.File(h5file) as hdf5_file:
         with h5py.File(h5file,mode='r') as hdf5_file:
             group = hdf5_file['/devices/'+device_name]
             # Now program the buffered outputs:
@@ -318,10 +320,12 @@ class Arduino_DDSWorker(Worker):
                                                        oldtable[i]['ramplow%d'%ddsno], oldtable[i]['ramphigh%d'%ddsno],
                                                        oldtable[i]['rampdur%d'%ddsno], oldtable[i]['rampon%d'%ddsno]):
                         if line['rampon%d'%ddsno] == 1:
-                            self.connection.write(b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno]))
+                            commandString = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
+                            self.connection.write(commandString)
+                            #self.logger.info("Programming ramp: " + str(commandString))
                         else:
                             self.connection.write(b'f %f\r\n'%line['freq%d'%ddsno])
-
+            
             # Store the table for future smart programming comparisons:
             try:
                 self.smart_cache['TABLE_DATA'][:len(data)] = data
