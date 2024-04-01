@@ -312,7 +312,9 @@ class Arduino_DDSWorker(Worker):
         if table_data is not None:
             data = table_data
             for ddsno in range(2):
-                self.connection.write(b'@ %d\r\n'%ddsno)
+                commandString = b'@ %d\r\n'%ddsno
+                self.connection.write(commandString)
+                print(commandString)
                 for i, line in enumerate(data):
                     oldtable = self.smart_cache['TABLE_DATA']
                     if fresh or i >= len(oldtable) or (line['freq%d'%ddsno], line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno],
@@ -322,9 +324,12 @@ class Arduino_DDSWorker(Worker):
                         if line['rampon%d'%ddsno] == 1:
                             commandString = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
                             self.connection.write(commandString)
+                            print(commandString)
                             #self.logger.info("Programming ramp: " + str(commandString))
                         else:
-                            self.connection.write(b'f %f\r\n'%line['freq%d'%ddsno])
+                            commandString = b'f %f\r\n'%line['freq%d'%ddsno]
+                            self.connection.write(commandString)
+                            print(commandString)
             
             # Store the table for future smart programming comparisons:
             try:
