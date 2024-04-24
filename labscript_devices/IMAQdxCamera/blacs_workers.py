@@ -25,7 +25,7 @@ import labscript_utils.h5_lock
 import h5py
 import labscript_utils.properties
 import zmq
-import logging
+#import logging
 
 from labscript_utils.ls_zprocess import Context
 from labscript_utils.shared_drive import path_to_local
@@ -144,8 +144,8 @@ class IMAQdx_Camera(object):
         self.exception_on_failed_shot = True
         self._abort_acquisition = False
 
-        log_name = 'BLACS.%s_%s.worker'%("CameraDevice","CameraWorker")
-        self.logger = logging.getLogger(log_name)
+        #log_name = 'BLACS.%s_%s.worker'%("CameraDevice","CameraWorker")
+        #self.logger = logging.getLogger(log_name)
 
     def set_attributes(self, attr_dict):
         for k, v in attr_dict.items():

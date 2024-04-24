@@ -86,7 +86,7 @@ class ImageReceiver(ZMQServer):
         else:
             # Updating image. Keep zoom/pan/levels/etc settings.
             self.image_view.setImage(
-                image.swapaxes(-1, -2), autoRange=False, autoLevels=False
+                image.swapaxes(-1, -2), autoRange=False, autoLevels=False, autoHistogramRange=False
             )
         # Update fps indicator:
         if self.frame_rate is not None:
@@ -144,11 +144,13 @@ class IMAQdxCameraTab(DeviceTab):
         self.image.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
+
         self.ui.horizontalLayout.addWidget(self.image)
         self.ui.pushButton_stop.hide()
         self.ui.doubleSpinBox_maxrate.hide()
         self.ui.toolButton_nomax.hide()
         self.ui.label_fps.hide()
+
 
         # Ensure the GUI reserves space for these widgets even if they are hidden.
         # This prevents the GUI jumping around when buttons are clicked:
