@@ -51,8 +51,6 @@ class Pyncmaster(PulseBlaster_No_DDS):
         self.core_clock_freq = self.clock_rate
         self.clock_limit = self.core_clock_freq*1e6
         self.clock_resolution = 1/self.clock_limit
-        
-        #self.logger.debug('Initializing main Pyncblaster object:')
 
         super(Pyncmaster, self).__init__(*args,**kwargs) #It was PulseBlaster_No_DDS
  
@@ -86,7 +84,7 @@ class Pyncmaster(PulseBlaster_No_DDS):
             dataint = inst['data']
             delaydouble = inst['delay']
             pb_inst_table[i] = (flagint, instructionint, dataint, delaydouble)
-        print("pb_inst_table size={}".format(len(pb_inst_table)))
+        # print("pb_inst_table size={}".format(len(pb_inst_table)))
 
         # Okay now write it to the file:
         group = hdf5_file['/devices/'+self.name]
@@ -100,10 +98,10 @@ class Pyncmaster(PulseBlaster_No_DDS):
         dig_outputs, ignore = self.get_direct_outputs()
         #print("lock {}: timeout extended".format(hdf5_file.zlock))
         #hdf5_file.zlock.client.set_default_timeout(300)
-        print("Start generate code")
+        # print("Start generate code")
         pb_inst = self.convert_to_pb_inst(dig_outputs)
-        print("pb_inst size = {}".format(len(pb_inst)))
-        print("End generate code")
+        # print("pb_inst size = {}".format(len(pb_inst)))
+        # print("End generate code")
         self.write_pb_inst_to_h5(pb_inst, hdf5_file)
 
     def convert_to_pb_inst(self, dig_outputs):
@@ -353,8 +351,8 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
     core_clock_freq = 20.0
     uberglobals =  globals()
     def init(self,uberglobals=uberglobals):
-        #log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
-        #self.logger = logging.getLogger(log_name) # Jeff's debugging code
+        log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
+        self.logger = logging.getLogger(log_name) # Jeff's debugging code
 
         self.programming_scheme = 'pb_stop_programming/STOP'
         exec('global pb_read_status; from pynqapi import *',uberglobals)
@@ -362,7 +360,7 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         global h5py; import labscript_utils.h5_lock, h5py
         global zprocess; import zprocess
 
-        #self.logger.debug('Initializing PyncmasterWorker:')
+        self.logger.debug('Initializing PyncmasterWorker:')
         #for k, v in self.__dict__.items():
         #    self.logger.debug(k + ": " + str(type(v)) + ": " + str(v))
 
@@ -379,11 +377,12 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         self.all_waits_finished = zprocess.Event('all_waits_finished')
         self.waits_pending = False
 
+
         pb_select_board(self.board_number)
         pb_init()
-        #self.logger.debug(f'Setting Jane clock to {self.clock_rate}')
+        self.logger.debug(f'Setting Jane clock to {self.clock_rate}')
         self.core_clock_freq = pb_core_clock(self.clock_rate)
-        #self.logger.debug(f'Jane clock set to {self.core_clock_freq[0]}')
+        self.logger.debug(f'Jane clock set to {self.core_clock_freq[0]}')
 
         # This is only set to True on a per-shot basis, so set it to False
         # for manual mode. Set associated attributes to None:
@@ -392,25 +391,25 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         self.time_based_shot_end_time = None
 
     def check_status(self):
-#         self.logger.debug('checking status') # Jeff's debugging code
+        self.logger.debug('checking status') # Jeff's debugging code
         if self.waits_pending:
-#             self.logger.debug('waits are pending') # Jeff's debugging code
+            self.logger.debug('waits are pending') # Jeff's debugging code
             try:
-#                 self.logger.debug('waiting') # Jeff's debugging code
+                self.logger.debug('waiting') # Jeff's debugging code
                 self.all_waits_finished.wait(self.h5file, timeout=0)
                 self.waits_pending = False
             except zprocess.TimeoutError:
-#                 self.logger.debug('Timeout error') # Jeff's debugging code
+                self.logger.debug('Timeout error') # Jeff's debugging code
                 pass
         if self.time_based_shot_end_time is not None:
-#             self.logger.debug('There is a time based shot') # Jeff's debugging code
+            self.logger.debug('There is a time based shot') # Jeff's debugging code
             import time
             time_based_shot_over = time.time() > self.time_based_shot_end_time
-#             self.logger.debug('Is time based shot over?: %s'%str(time_based_shot_over)) # Jeff's debugging code
+            self.logger.debug('Is time based shot over?: %s'%str(time_based_shot_over)) # Jeff's debugging code
         else:
-#             self.logger.debug('There is no time based shot') # Jeff's debugging code
+            self.logger.debug('There is no time based shot') # Jeff's debugging code
             time_based_shot_over = None
-#         self.logger.debug('Returning pb_read_status') # Jeff's debugging code
+        self.logger.debug('Returning pb_read_status') # Jeff's debugging code
         return pb_read_status(), self.waits_pending, time_based_shot_over
 
     # @define_state(MODE_MANUAL|MODE_BUFFERED|MODE_TRANSITION_TO_BUFFERED|MODE_TRANSITION_TO_MANUAL,True)

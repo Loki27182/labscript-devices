@@ -321,11 +321,11 @@ class Arduino_Single_DDSWorker(Worker):
                         if line['rampon%d'%ddsno] == 1:
                             command = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
                             self.connection.write(command)
-                            print(command) # Added for debugging
+                            #print(command) # Added for debugging
                         else:
                             command = b'f %f\r\n'%line['freq%d'%ddsno]
                             self.connection.write(command)
-                            print(command) # Added for debugging
+                            #print(command) # Added for debugging
 
             # Store the table for future smart programming comparisons:
             try:

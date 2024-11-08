@@ -393,7 +393,7 @@ class NI_DAQmxOutputWorker(Worker):
                         current = samples.value if samples.value != 2 ** 64 - 1 else -1
                         total = npts.value if npts.value != 2 ** 64 - 1 else -1
                         msg = 'Stopping %s at sample %d of %d'
-                        self.logger.info(msg, name, current, total)
+                        self.logger.debug(msg, name, current, total)
                 task.StopTask()
             task.ClearTask()
 

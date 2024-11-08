@@ -66,7 +66,7 @@ class MockCamera(object):
     """Mock camera class that returns fake image data."""
 
     def __init__(self):
-        print("Starting device worker as a mock device")
+        # print("Starting device worker as a mock device")
         self.attributes = {}
         self.exception_on_failed_shot = True
 
@@ -86,11 +86,11 @@ class MockCamera(object):
         return self.snap()
 
     def grab_multiple(self, n_images, images, waitForNextBuffer=True):
-        print(f"Attempting to grab {n_images} (mock) images.")
+        # # print(f"Attempting to grab {n_images} (mock) images.")
         for i in range(n_images):
             images.append(self.grab())
-            print(f"Got (mock) image {i+1} of {n_images}.")
-        print(f"Got {len(images)} of {n_images} (mock) images.")
+            # # print(f"Got (mock) image {i+1} of {n_images}.")
+        # print(f"Got {len(images)} of {n_images} (mock) images.")
 
     def snap(self):
         N = 500
@@ -126,7 +126,7 @@ class IMAQdx_Camera(object):
         _monkeypatch_imaqdispose()
 
         # Find the camera:
-        print("Finding camera...")
+        # print("Finding camera...")
         for cam in nv.IMAQdxEnumerateCameras(True):
             if serial_number == (cam.SerialNumberHi << 32) + cam.SerialNumberLo:
                 self.camera = cam
@@ -135,7 +135,7 @@ class IMAQdx_Camera(object):
             msg = f"No connected camera with serial number {serial_number:X} found"
             raise Exception(msg)
         # Connect to the camera:
-        print("Connecting to camera...")
+        # print("Connecting to camera...")
         self.imaqdx = nv.IMAQdxOpenCamera(
             self.camera.InterfaceName, nv.IMAQdxCameraControlModeController
         )
@@ -160,7 +160,7 @@ class IMAQdx_Camera(object):
             # self.logger.info("Setting Camera Attribute: " + name + ": " + str(value))
             nv.IMAQdxSetAttribute(self.imaqdx, name.encode('utf8'), _value)
             # self.logger.info("Camera Attribute Set: " + name + ": " + str(value))
-            #print(name + " set to " + str(value) +"\r\n")
+            ## print(name + " set to " + str(value) +"\r\n")
         except Exception as e:
             # Add some info to the exception - including whether the attribute exists and is writable:
             msg = f"failed to set attribute {name} to {value}"
@@ -196,7 +196,7 @@ class IMAQdx_Camera(object):
             #    msg += ": Attribute doesn't exist"
             #    raise Exception(msg) from e
 #
-            #print(msg)
+            ## print(msg)
             raise Exception(msg) from e
 
     def get_attribute_names(self, visibility_level, writeable_only=True):
@@ -246,32 +246,32 @@ class IMAQdx_Camera(object):
         return self._decode_image_data(self.img)
 
     def grab_multiple(self, n_images, images, waitForNextBuffer=True):
-        print(f"Attempting to grab {n_images} images.")
+        # print(f"Attempting to grab {n_images} images.")
         for i in range(n_images):
             while True:
                 if self._abort_acquisition:
-                    print("Abort during acquisition.")
+                    # print("Abort during acquisition.")
                     self._abort_acquisition = False
                     return
                 try:
                     images.append(self.grab(waitForNextBuffer))
-                    print(f"Got image {i+1} of {n_images}.")
+                    # print(f"Got image {i+1} of {n_images}.")
                     break
                 except nv.ImaqDxError as e:
                     if e.code == nv.IMAQdxErrorTimeout.value:
-                        print('.', end='')
+                        # print('.', end='')
                         continue
                     
                     if self.exception_on_failed_shot:
                         raise
                     else:
                         # stop acquisition
-                        print(e, file=sys.stderr)
+                        # print(e, file=sys.stderr)
                         break
                     
                     
                     
-        print(f"Got {len(images)} of {n_images} images.")
+        # print(f"Got {len(images)} of {n_images} images.")
 
     def stop_acquisition(self):
         nv.IMAQdxStopAcquisition(self.imaqdx)
@@ -300,12 +300,12 @@ class IMAQdxCameraWorker(Worker):
 
     def init(self):
         self.camera = self.get_camera()
-        print("Setting attributes...")
+        # print("Setting attributes...")
         self.smart_cache = {}
         self.set_attributes_smart(self.manual_mode_camera_attributes)
         self.set_attributes_smart(self.camera_attributes)
         self.set_attributes_smart(self.manual_mode_camera_attributes)
-        print("Initialisation complete")
+        # print("Initialisation complete")
         self.images = None
         self.n_images = None
         self.attributes_to_save = None
@@ -448,7 +448,7 @@ class IMAQdxCameraWorker(Worker):
             self.attributes_to_save = self.get_attributes_as_dict(saved_attr_level)
         else:
             self.attributes_to_save = None
-        print(f"Configuring camera for {self.n_images} images.")
+        # print(f"Configuring camera for {self.n_images} images.")
         self.camera.configure_acquisition(continuous=False, bufferCount=self.n_images)
         self.images = []
         self.acquisition_thread = threading.Thread(
@@ -461,7 +461,7 @@ class IMAQdxCameraWorker(Worker):
 
     def transition_to_manual(self):
         if self.h5_filepath is None:
-            print('No camera exposures in this shot.\n')
+            # print('No camera exposures in this shot.\n')
             return True
         assert self.acquisition_thread is not None
         self.acquisition_thread.join(timeout=self.stop_acquisition_timeout)
@@ -474,13 +474,13 @@ class IMAQdxCameraWorker(Worker):
             else:
                 self.camera.abort_acquisition()
                 self.acquisition_thread.join()
-                print(dedent(msg), file=sys.stderr)
+                # print(dedent(msg), file=sys.stderr)
         self.acquisition_thread = None
 
-        print("Stopping acquisition.")
+        # print("Stopping acquisition.")
         self.camera.stop_acquisition()
 
-        print(f"Saving {len(self.images)}/{len(self.exposures)} images.")
+        # print(f"Saving {len(self.images)}/{len(self.exposures)} images.")
 
         with h5py.File(self.h5_filepath, 'r+') as f:
             # Use orientation for image path, device_name if orientation unspecified
@@ -515,7 +515,7 @@ class IMAQdxCameraWorker(Worker):
             # Save images to the HDF5 file:
             for (name, frametype), imagelist in images.items():
                 data = imagelist[0] if len(imagelist) == 1 else np.array(imagelist)
-                print(f"Saving frame(s) {name}/{frametype}.")
+                # print(f"Saving frame(s) {name}/{frametype}.")
                 group = image_group.require_group(name)
                 dset = group.create_dataset(
                     frametype, data=data, dtype='uint16', compression='gzip'
@@ -530,7 +530,7 @@ class IMAQdxCameraWorker(Worker):
         try:
             image_block = np.stack(self.images)
         except ValueError:
-            print("Cannot display images in the GUI, they are not all the same shape")
+            pass# print("Cannot display images in the GUI, they are not all the same shape")
         else:
             self._send_image_to_parent(image_block)
 
@@ -541,7 +541,7 @@ class IMAQdxCameraWorker(Worker):
         self.h5_filepath = None
         self.stop_acquisition_timeout = None
         self.exception_on_failed_shot = None
-        print("Setting manual mode camera attributes.\n")
+        # print("Setting manual mode camera attributes.\n")
         self.set_attributes_smart(self.manual_mode_camera_attributes)
         if self.continuous_dt is not None:
             # If continuous manual mode acquisition was in progress before the bufferd
