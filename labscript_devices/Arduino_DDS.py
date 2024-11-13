@@ -258,7 +258,8 @@ class Arduino_DDSWorker(Worker):
             initial_baud_rate = self.default_baud_rate
         else:
             initial_baud_rate = self.baud_rate
-
+        self.initial_baud_rate = initial_baud_rate
+        
         self.connection = serial.Serial(
             self.com_port, baudrate=initial_baud_rate, timeout=0.1
         )
@@ -281,6 +282,7 @@ class Arduino_DDSWorker(Worker):
         self.connection.write(b'$\r\n')
 
     def program_static(self,channel,type,value):
+        #print('start program_static()')
         if type == 'freq':
             command = b'f %f\r\n'%value
         else:
@@ -288,9 +290,15 @@ class Arduino_DDSWorker(Worker):
         self.connection.write(command)
         # Now that a static update has been done, we'd better invalidate the saved STATIC_DATA:
         self.smart_cache['STATIC_DATA'] = None
+        #print('end program_static()')
+        #print('')
 
     def transition_to_buffered(self,device_name,h5file,initial_values,fresh):
-
+        self.connection.close()
+        self.connection = serial.Serial(
+            self.com_port, baudrate=self.initial_baud_rate, timeout=0.1
+        )
+        #print('start transition_to_buffered()')
         # Pretty please reset your memory pointer to zero:
 
         # Store the initial values in case we have to abort and restore them:
@@ -300,22 +308,26 @@ class Arduino_DDSWorker(Worker):
         
         # Jeff edit to fix error in blacs tab when running experiments from runmanager
         # with h5py.File(h5file) as hdf5_file:
+        #print('opening h5 file')
         with h5py.File(h5file,mode='r') as hdf5_file:
             group = hdf5_file['/devices/'+device_name]
             # Now program the buffered outputs:
             if 'TABLE_DATA' in group:
                 table_data = group['TABLE_DATA'][:]
-
+        #print('table data loaded from file')
 
         # Now program the buffered outputs:
 
         if table_data is not None:
             data = table_data
+            #print('sending data tables')
             for ddsno in range(2):
+                #print('sending data table {:f}'.format(ddsno))
                 commandString = b'@ %d\r\n'%ddsno
                 self.connection.write(commandString)
                 #print(commandString)
                 for i, line in enumerate(data):
+                    #print('sending line {:f}'.format(i))
                     oldtable = self.smart_cache['TABLE_DATA']
                     if fresh or i >= len(oldtable) or (line['freq%d'%ddsno], line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno],
                                                        line['rampdur%d'%ddsno], line['rampon%d'%ddsno]) != (oldtable[i]['freq%d'%ddsno],
@@ -332,6 +344,7 @@ class Arduino_DDSWorker(Worker):
                             #print(commandString)
             
             # Store the table for future smart programming comparisons:
+            #print('set smart cache thing')
             try:
                 self.smart_cache['TABLE_DATA'][:len(data)] = data
                 self.logger.debug('Stored new table as subset of old table')
@@ -339,12 +352,14 @@ class Arduino_DDSWorker(Worker):
                 self.smart_cache['TABLE_DATA'] = data
                 self.logger.debug('New table is longer than old table and has replaced it.')
 
+            #print('setting final values')
             # Get the final values of table mode so that the GUI can
             # reflect them after the run:
             self.final_values['channel 0'] = {}
             self.final_values['channel 1'] = {}
             self.final_values['channel 0']['freq'] = data[-1]['freq0']
             self.final_values['channel 1']['freq'] = data[-1]['freq1']
+            #print('reading from arduino?')
             self.connection.readline()
             if self.update_mode == 'synchronous':
                 # Transition to hardware synchronous updates:
@@ -359,6 +374,8 @@ class Arduino_DDSWorker(Worker):
                 raise ValueError('invalid update mode %s'%str(self.update_mode))
 
 
+        #print('end transition_to_buffered()')
+        #print('')
         return self.final_values
 
     def abort_transition_to_buffered(self):
