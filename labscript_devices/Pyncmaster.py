@@ -37,8 +37,8 @@ class Pyncmaster(PulseBlaster_No_DDS):
     #clock_resolution = 50e-9 #s (20 was the default)
     n_flags = 64
     #core_clock_freq = 20.0 #MHz
-    @set_passed_properties({"connection_table_properties": ["clock_rate"]})
-    def __init__(self,clock_rate=20,*args,**kwargs):
+    @set_passed_properties({"connection_table_properties": ["clock_rate",'log_level']})
+    def __init__(self,clock_rate=20,log_level=logging.INFO,*args,**kwargs):
         #clock_defined = False
         #for k,v in kwargs.items():
         #    if k=='clock_rate':
@@ -47,10 +47,12 @@ class Pyncmaster(PulseBlaster_No_DDS):
         #if not clock_defined:
         #    
         #    kwargs['clock_rate'] = 20
+
         self.clock_rate = clock_rate
         self.core_clock_freq = self.clock_rate
         self.clock_limit = self.core_clock_freq*1e6
         self.clock_resolution = 1/self.clock_limit
+        self.log_level = log_level
 
         super(Pyncmaster, self).__init__(*args,**kwargs) #It was PulseBlaster_No_DDS
  
@@ -345,14 +347,15 @@ class PyncmasterTab(Pulseblaster_No_DDS_Tab):
             self.device_worker_class = PyncmasterWorker
         Pulseblaster_No_DDS_Tab.__init__(self,*args,**kwargs )
 
-
+from labscript_utils.setup_logging import setup_logging
 
 class PyncmasterWorker(PulseblasterNoDDSWorker):
     core_clock_freq = 20.0
     uberglobals =  globals()
     def init(self,uberglobals=uberglobals):
         log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
-        self.logger = logging.getLogger(log_name) # Jeff's debugging code
+        #self.logger = logging.getLogger(log_name) # Jeff's debugging code
+        self.logger = setup_logging(log_name,self.log_level)
 
         self.programming_scheme = 'pb_stop_programming/STOP'
         exec('global pb_read_status; from pynqapi import *',uberglobals)

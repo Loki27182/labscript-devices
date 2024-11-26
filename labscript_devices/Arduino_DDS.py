@@ -174,7 +174,6 @@ import time
 
 from blacs.tab_base_classes import Worker, define_state
 from blacs.tab_base_classes import MODE_MANUAL, MODE_TRANSITION_TO_BUFFERED, MODE_TRANSITION_TO_MANUAL, MODE_BUFFERED
-
 from blacs.device_base_class import DeviceTab
 
 @BLACS_tab
@@ -187,7 +186,7 @@ class Arduino_DDSTab(DeviceTab):
         self.base_step =     {'freq':0.1*10**6, 'ramplow':10.0**6, 'ramphigh':10.0**6, 'rampdur': 1, 'rampon': 1}
         self.base_decimals = {'freq':1, 'ramplow':1, 'ramphigh':1, 'rampdur': 1, 'rampon': 1}
         self.num_DDS = 2
-
+        
         # Create DDS Output objects
         dds_prop = {}
         for i in range(self.num_DDS): # 4 is the number of DDS outputs on this device
