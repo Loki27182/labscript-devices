@@ -20,18 +20,18 @@ bauds = {9600: b'Kb 78',
          57600: b'Kb 14',
          115200: b'Kb 0a'}
 
-class Arduino_Single_DDS(IntermediateDevice):
-    description = 'Arduino_Single_DDS'
+class Arduino_DDS_n_ch(IntermediateDevice):
+    description = 'ArduinoDDS'
     allowed_children = [DDSAD9954,AD9914]
     clock_limit = 9990#I need to find out what this would be for the Arduino
 
     @set_passed_properties(
         property_names = {'connection_table_properties': ['com_port', 'baud_rate', 'default_baud_rate', 'update_mode',
-        'synchronous_first_line_repeat']}#I'm not sure which of these I'll keep
+        'synchronous_first_line_repeat','num_channels']}#I'm not sure which of these I'll keep
         )
     def __init__(self, name, parent_device,
                  com_port = '', baud_rate=9600, default_baud_rate = None, update_mode='synchronous',
-                 synchronous_first_line_repeat = False, **kwargs):
+                 synchronous_first_line_repeat = True, num_channels = 2, **kwargs):
 
         IntermediateDevice.__init__(self, name, parent_device, **kwargs)
         self.BLACS_connection = '%s,%s'%(com_port, str(baud_rate))
@@ -45,13 +45,15 @@ class Arduino_Single_DDS(IntermediateDevice):
         if not default_baud_rate in bauds and default_baud_rate is not None:
             raise LabscriptError('default_baud_rate must be one of {0} or None (to indicate no default)'.format(list(bauds)))
 
+        self.num_DDS = num_channels
+
         self.update_mode = update_mode
         self.synchronous_first_line_repeat = synchronous_first_line_repeat
 
     def add_device(self, device):
         Device.add_device(self, device)
         # The Novatech doesn't support 0Hz output; set the default frequency of the DDS to 0.1 Hz:
-        device.frequency.default_value = 20000000
+        device.frequency.default_value = 16000000
         device.ramplow.default_value = 20000000
         device.ramphigh.default_value = 20000000
         device.rampdur.default_value = 1
@@ -119,19 +121,20 @@ class Arduino_Single_DDS(IntermediateDevice):
                 raise LabscriptError('%s %s has invalid connection string: \'%s\'. '%(dds.description,dds.name,str(dds.connection)) +
                                      'Format must be \'channel n\' with n from 0 to 2.')
 
-        dtypes = [('freq%d'%i,np.uint32) for i in range(2)] + \
-                 [('ramplow%d'%i,np.uint32) for i in range(2)] + \
-                 [('ramphigh%d'%i,np.uint32) for i in range(2)] + \
-                 [('rampdur%d'%i,np.uint32) for i in range(2)] + \
-                 [('rampon%d'%i,np.uint8) for i in range(2)]
+        dtypes = [('freq%d'%i,np.uint32) for i in range(len(self.child_devices))] + \
+                 [('ramplow%d'%i,np.uint32) for i in range(len(self.child_devices))] + \
+                 [('ramphigh%d'%i,np.uint32) for i in range(len(self.child_devices))] + \
+                 [('rampdur%d'%i,np.uint32) for i in range(len(self.child_devices))] + \
+                 [('rampon%d'%i,np.uint8) for i in range(len(self.child_devices))]
 
         clockline = self.parent_clock_line
         pseudoclock = clockline.parent_device
         times = pseudoclock.times[clockline]
 
         out_table = np.zeros(len(times),dtype=dtypes)
-        out_table['freq0'].fill(1)
-        out_table['freq1'].fill(1)
+
+        #out_table['freq0'].fill(1)
+        #out_table['freq1'].fill(1)
 
         for connection in range(len(self.child_devices)):
             if not connection in DDSs:
@@ -139,6 +142,7 @@ class Arduino_Single_DDS(IntermediateDevice):
             dds = DDSs[connection]
             # The last two instructions are left blank, for BLACS
             # to fill in at program time.
+            out_table['freq%d'%connection].fill(1)
             out_table['freq%d'%connection][:] = dds.frequency.raw_output
             out_table['ramplow%d'%connection][:] = dds.ramplow.raw_output
             out_table['ramphigh%d'%connection][:] = dds.ramphigh.raw_output
@@ -175,20 +179,19 @@ import time
 
 from blacs.tab_base_classes import Worker, define_state
 from blacs.tab_base_classes import MODE_MANUAL, MODE_TRANSITION_TO_BUFFERED, MODE_TRANSITION_TO_MANUAL, MODE_BUFFERED
-
 from blacs.device_base_class import DeviceTab
 
 @BLACS_tab
-class Arduino__Single_DDSTab(DeviceTab):
+class Arduino_DDS_n_chTab(DeviceTab):
     def initialise_GUI(self):
         # Capabilities
         self.base_units =    {'freq':'Hz', 'ramplow': 'Hz', 'ramphigh': 'Hz', 'rampdur': 's?', 'rampon': ''}
         self.base_min =      {'freq':0.0, 'ramplow': 0.0, 'ramphigh': 0.0, 'rampdur': 0, 'rampon': 0}
         self.base_max =      {'freq':160.0*10.0**6, 'ramplow': 160.0*10.0**6, 'ramphigh': 160.0*10.0**6, 'rampdur': 1*10**5, 'rampon': 1}
-        self.base_step =     {'freq':100, 'ramplow':10.0**6, 'ramphigh':10.0**6, 'rampdur': 1, 'rampon': 1}
+        self.base_step =     {'freq':0.1*10**6, 'ramplow':10.0**6, 'ramphigh':10.0**6, 'rampdur': 1, 'rampon': 1}
         self.base_decimals = {'freq':1, 'ramplow':1, 'ramphigh':1, 'rampdur': 1, 'rampon': 1}
-        self.num_DDS = 1
-
+        self.num_DDS = self.num_channels
+        
         # Create DDS Output objects
         dds_prop = {}
         for i in range(self.num_DDS): # 4 is the number of DDS outputs on this device
@@ -235,7 +238,7 @@ class Arduino__Single_DDSTab(DeviceTab):
 
 
         # Create and set the primary worker
-        self.create_worker("main_worker",Arduino_Single_DDSWorker,{'com_port':self.com_port,
+        self.create_worker("main_worker",Arduino_DDS_n_chWorker,{'com_port':self.com_port,
                                                               'baud_rate': self.baud_rate,
                                                               'default_baud_rate': self.default_baud_rate,
                                                               'update_mode': self.update_mode})
@@ -246,18 +249,21 @@ class Arduino__Single_DDSTab(DeviceTab):
         self.supports_smart_programming(False)
 
 
-class Arduino_Single_DDSWorker(Worker):
+class Arduino_DDS_n_chWorker(Worker):
     def init(self):
         global serial; import serial
         global socket; import socket
         global h5py; import labscript_utils.h5_lock, h5py
+        import logging
         self.smart_cache = {'STATIC_DATA': None, 'TABLE_DATA': ''}
-
+        self.logger = logging.getLogger('BLACS.%s.state_queue'%('red_AOM_arduino'))
+        
         if self.default_baud_rate is not None:
             initial_baud_rate = self.default_baud_rate
         else:
             initial_baud_rate = self.baud_rate
-        # print('Creating connection: port=%s, baud=%s'%(self.com_port,initial_baud_rate)) # Added for debugging
+        self.initial_baud_rate = initial_baud_rate
+        
         self.connection = serial.Serial(
             self.com_port, baudrate=initial_baud_rate, timeout=0.1
         )
@@ -265,11 +271,9 @@ class Arduino_Single_DDSWorker(Worker):
     def program_manual(self,front_panel_values):
         # TODO: Optimise this so that only items that have changed are reprogrammed by storing the last programmed values
         # For each DDS channel,
-        for i in range(1):
+        for i in range(self.num_DDS):
             # and for each subchnl in the DDS,
-            command = b'@ %d\r\n'%i
-            self.connection.write(command)
-            # print(command) # Added for debugging
+            self.connection.write(b'@ %d\r\n'%i)
             #if front_panel_values['channel %d'%i]['rampon'] == 1:
             #    ramplow = front_panel_values['channel %d'%i]['ramplow']
             #    ramphigh = front_panel_values['channel %d'%i]['ramphigh']
@@ -279,57 +283,72 @@ class Arduino_Single_DDSWorker(Worker):
             for subchnl in ['freq']:
                     # Program the sub channel
                 self.program_static(i,subchnl,front_panel_values['channel %d'%i][subchnl])
-        command = b'$\r\n'
-        self.connection.write(command)
-        # print(command) # Added for debugging
+        self.connection.write(b'$\r\n')
 
     def program_static(self,channel,type,value):
+        #print('start program_static()')
         if type == 'freq':
             command = b'f %f\r\n'%value
         else:
             raise TypeError(type)
         self.connection.write(command)
-        # print(command) # Added for debugging
         # Now that a static update has been done, we'd better invalidate the saved STATIC_DATA:
         self.smart_cache['STATIC_DATA'] = None
+        #print('end program_static()')
+        #print('')
 
     def transition_to_buffered(self,device_name,h5file,initial_values,fresh):
-
+        self.connection.close()
+        self.connection = serial.Serial(
+            self.com_port, baudrate=self.initial_baud_rate, timeout=0.1
+        )
+        #print('start transition_to_buffered()')
         # Pretty please reset your memory pointer to zero:
 
         # Store the initial values in case we have to abort and restore them:
         # Store the final values to for use during transition_to_static:
         self.final_values = {}
         table_data = None
-        with h5py.File(h5file,'r') as hdf5_file:
+        
+        # Jeff edit to fix error in blacs tab when running experiments from runmanager
+        # with h5py.File(h5file) as hdf5_file:
+        #print('opening h5 file')
+        with h5py.File(h5file,mode='r') as hdf5_file:
             group = hdf5_file['/devices/'+device_name]
             # Now program the buffered outputs:
             if 'TABLE_DATA' in group:
                 table_data = group['TABLE_DATA'][:]
-
+        #print('table data loaded from file')
 
         # Now program the buffered outputs:
 
         if table_data is not None:
             data = table_data
-            for ddsno in range(1):
-                self.connection.write(b'@ %d\r\n'%ddsno)
+            #print('sending data tables')
+            for ddsno in range(2):
+                #print('sending data table {:f}'.format(ddsno))
+                commandString = b'@ %d\r\n'%ddsno
+                self.connection.write(commandString)
+                #print(commandString)
                 for i, line in enumerate(data):
+                    #print('sending line {:f}'.format(i))
                     oldtable = self.smart_cache['TABLE_DATA']
                     if fresh or i >= len(oldtable) or (line['freq%d'%ddsno], line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno],
                                                        line['rampdur%d'%ddsno], line['rampon%d'%ddsno]) != (oldtable[i]['freq%d'%ddsno],
                                                        oldtable[i]['ramplow%d'%ddsno], oldtable[i]['ramphigh%d'%ddsno],
                                                        oldtable[i]['rampdur%d'%ddsno], oldtable[i]['rampon%d'%ddsno]):
                         if line['rampon%d'%ddsno] == 1:
-                            command = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
-                            self.connection.write(command)
-                            #print(command) # Added for debugging
+                            commandString = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
+                            self.connection.write(commandString)
+                            #print(commandString)
+                            #self.logger.info("Programming ramp: " + str(commandString))
                         else:
-                            command = b'f %f\r\n'%line['freq%d'%ddsno]
-                            self.connection.write(command)
-                            #print(command) # Added for debugging
-
+                            commandString = b'f %f\r\n'%line['freq%d'%ddsno]
+                            self.connection.write(commandString)
+                            #print(commandString)
+            
             # Store the table for future smart programming comparisons:
+            #print('set smart cache thing')
             try:
                 self.smart_cache['TABLE_DATA'][:len(data)] = data
                 self.logger.debug('Stored new table as subset of old table')
@@ -337,23 +356,19 @@ class Arduino_Single_DDSWorker(Worker):
                 self.smart_cache['TABLE_DATA'] = data
                 self.logger.debug('New table is longer than old table and has replaced it.')
 
+            #print('setting final values')
             # Get the final values of table mode so that the GUI can
             # reflect them after the run:
             self.final_values['channel 0'] = {}
             self.final_values['channel 1'] = {}
             self.final_values['channel 0']['freq'] = data[-1]['freq0']
             self.final_values['channel 1']['freq'] = data[-1]['freq1']
-            # print('Waiting on read') # Added for debugging
+            #print('reading from arduino?')
             self.connection.readline()
-            # print('Read complete') # Added for debugging
             if self.update_mode == 'synchronous':
                 # Transition to hardware synchronous updates:
-                command = b'$\r\n'
-                self.connection.write(command)
-                # print(command) # Added for debugging
-                # print('Waiting on read') # Added for debugging
+                self.connection.write(b'$\r\n')
                 self.connection.readline()
-                # print('Read complete') # Added for debugging
                 # We are now waiting for a rising edge to trigger the output
                 # of the second table pair (first of the experiment)
             elif self.update_mode == 'asynchronous':
@@ -363,6 +378,8 @@ class Arduino_Single_DDSWorker(Worker):
                 raise ValueError('invalid update mode %s'%str(self.update_mode))
 
 
+        #print('end transition_to_buffered()')
+        #print('')
         return self.final_values
 
     def abort_transition_to_buffered(self):
@@ -389,14 +406,10 @@ class Arduino_Single_DDSWorker(Worker):
         # only program the channels that we need to
         for ddsnumber in DDSs:
             channel_values = values['channel %d'%ddsnumber]
-            command = b'@ %d\r\n'%ddsnumber
-            self.connection.write(command)
-            # print(command) # Added for debugging
+            self.connection.write(b'@ %d\r\n'%ddsnumber)
             for subchnl in ['freq']:
                 self.program_static(ddsnumber,subchnl,channel_values[subchnl])
-            command = b'$\r\n'
-            self.connection.write(command)
-            # print(command) # Added for debugging
+            self.connection.write(b'$\r\n')
 
         # return True to indicate we successfully transitioned back to manual mode
         return True
@@ -405,16 +418,11 @@ class Arduino_Single_DDSWorker(Worker):
 
         # return to the default baud rate
         if self.default_baud_rate is not None:
-            command = b'%s\r\n' % bauds[self.default_baud_rate]
-            self.connection.write(command)
-            # print(command) # Added for debugging
+            self.connection.write(b'%s\r\n' % bauds[self.default_baud_rate])
             time.sleep(0.1)
-            # print('Waiting on read') # Added for debugging
             self.connection.readlines()
-            # print('Read complete') # Added for debugging
 
         self.connection.close()
-        # print('Connection closed') # Added for debugging
 
 
 

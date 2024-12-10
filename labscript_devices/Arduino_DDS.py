@@ -4,8 +4,9 @@ from __future__ import division, unicode_literals, print_function, absolute_impo
 #    str = unicode
 
 from labscript_devices import runviewer_parser, BLACS_tab
-from labscript_devices import DDSAD9954
+from labscript_devices import DDSAD9954, AD9914
 from labscript_devices.DDSAD9954 import  DDSAD9954
+from labscript_devices.AD9914 import  AD9914
 from labscript import IntermediateDevice, Device, config, LabscriptError, set_passed_properties
 from labscript_utils.unitconversions import NovaTechDDS9mFreqConversion, NovaTechDDS9mAmpConversion
 
@@ -21,7 +22,7 @@ bauds = {9600: b'Kb 78',
 
 class Arduino_DDS(IntermediateDevice):
     description = 'ArduinoDDS'
-    allowed_children = [DDSAD9954]
+    allowed_children = [DDSAD9954,AD9914]
     clock_limit = 9990#I need to find out what this would be for the Arduino
 
     @set_passed_properties(
