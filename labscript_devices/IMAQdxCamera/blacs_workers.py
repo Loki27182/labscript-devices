@@ -420,6 +420,7 @@ class IMAQdxCameraWorker(Worker):
             h5_filepath = path_to_local(h5_filepath)
         if self.continuous_thread is not None:
             # Pause continuous acquistion during transition_to_buffered:
+            self.acquisition_thread = None
             self.stop_continuous(pause=True)
         with h5py.File(h5_filepath, 'r') as f:
             group = f['devices'][self.device_name]

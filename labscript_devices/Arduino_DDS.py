@@ -320,14 +320,14 @@ class Arduino_DDSWorker(Worker):
 
         if table_data is not None:
             data = table_data
-            #print('sending data tables')
+            print('sending data tables')
             for ddsno in range(2):
-                #print('sending data table {:f}'.format(ddsno))
+                print('sending data table {:f}'.format(ddsno))
                 commandString = b'@ %d\r\n'%ddsno
                 self.connection.write(commandString)
-                #print(commandString)
+                print(commandString)
                 for i, line in enumerate(data):
-                    #print('sending line {:f}'.format(i))
+                    print('sending line {:f}'.format(i))
                     oldtable = self.smart_cache['TABLE_DATA']
                     if fresh or i >= len(oldtable) or (line['freq%d'%ddsno], line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno],
                                                        line['rampdur%d'%ddsno], line['rampon%d'%ddsno]) != (oldtable[i]['freq%d'%ddsno],
@@ -336,12 +336,12 @@ class Arduino_DDSWorker(Worker):
                         if line['rampon%d'%ddsno] == 1:
                             commandString = b'r %f %f %f\r\n'%(line['ramplow%d'%ddsno], line['ramphigh%d'%ddsno], line['rampdur%d'%ddsno])
                             self.connection.write(commandString)
-                            #print(commandString)
+                            print(commandString)
                             #self.logger.info("Programming ramp: " + str(commandString))
                         else:
                             commandString = b'f %f\r\n'%line['freq%d'%ddsno]
                             self.connection.write(commandString)
-                            #print(commandString)
+                            print(commandString)
             
             # Store the table for future smart programming comparisons:
             #print('set smart cache thing')
@@ -352,7 +352,7 @@ class Arduino_DDSWorker(Worker):
                 self.smart_cache['TABLE_DATA'] = data
                 self.logger.debug('New table is longer than old table and has replaced it.')
 
-            #print('setting final values')
+            print('setting final values')
             # Get the final values of table mode so that the GUI can
             # reflect them after the run:
             self.final_values['channel 0'] = {}
@@ -374,7 +374,7 @@ class Arduino_DDSWorker(Worker):
                 raise ValueError('invalid update mode %s'%str(self.update_mode))
 
 
-        #print('end transition_to_buffered()')
+        print('end transition_to_buffered()')
         #print('')
         return self.final_values
 

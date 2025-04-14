@@ -27,11 +27,11 @@ class Arduino_DDS_n_ch(IntermediateDevice):
 
     @set_passed_properties(
         property_names = {'connection_table_properties': ['com_port', 'baud_rate', 'default_baud_rate', 'update_mode',
-        'synchronous_first_line_repeat','num_channels']}#I'm not sure which of these I'll keep
+        'synchronous_first_line_repeat','num_DDS']}#I'm not sure which of these I'll keep
         )
     def __init__(self, name, parent_device,
                  com_port = '', baud_rate=9600, default_baud_rate = None, update_mode='synchronous',
-                 synchronous_first_line_repeat = True, num_channels = 2, **kwargs):
+                 synchronous_first_line_repeat = True, num_DDS = 2, **kwargs):
 
         IntermediateDevice.__init__(self, name, parent_device, **kwargs)
         self.BLACS_connection = '%s,%s'%(com_port, str(baud_rate))
@@ -45,7 +45,7 @@ class Arduino_DDS_n_ch(IntermediateDevice):
         if not default_baud_rate in bauds and default_baud_rate is not None:
             raise LabscriptError('default_baud_rate must be one of {0} or None (to indicate no default)'.format(list(bauds)))
 
-        self.num_DDS = num_channels
+        self.num_DDS = num_DDS
 
         self.update_mode = update_mode
         self.synchronous_first_line_repeat = synchronous_first_line_repeat
@@ -184,13 +184,23 @@ from blacs.device_base_class import DeviceTab
 @BLACS_tab
 class Arduino_DDS_n_chTab(DeviceTab):
     def initialise_GUI(self):
+
+        connection_object = self.settings['connection_table'].find_by_name(self.device_name)
+        connection_table_properties = connection_object.properties
+
+        self.com_port = connection_table_properties.get('com_port', None)
+        self.baud_rate = connection_table_properties.get('baud_rate', None)
+        self.default_baud_rate = connection_table_properties.get('default_baud_rate', None)
+        self.update_mode = connection_table_properties.get('update_mode', 'synchronous')
+        
+        self.num_DDS = connection_table_properties.get('num_DDS', 2)
+
         # Capabilities
         self.base_units =    {'freq':'Hz', 'ramplow': 'Hz', 'ramphigh': 'Hz', 'rampdur': 's?', 'rampon': ''}
         self.base_min =      {'freq':0.0, 'ramplow': 0.0, 'ramphigh': 0.0, 'rampdur': 0, 'rampon': 0}
         self.base_max =      {'freq':160.0*10.0**6, 'ramplow': 160.0*10.0**6, 'ramphigh': 160.0*10.0**6, 'rampdur': 1*10**5, 'rampon': 1}
         self.base_step =     {'freq':0.1*10**6, 'ramplow':10.0**6, 'ramphigh':10.0**6, 'rampdur': 1, 'rampon': 1}
         self.base_decimals = {'freq':1, 'ramplow':1, 'ramphigh':1, 'rampdur': 1, 'rampon': 1}
-        self.num_DDS = self.num_channels
         
         # Create DDS Output objects
         dds_prop = {}
@@ -203,7 +213,7 @@ class Arduino_DDS_n_chTab(DeviceTab):
                                                      'step':self.base_step[subchnl],
                                                      'decimals':self.base_decimals[subchnl]
                                                     }
-
+        print(len(dds_prop))
         # Create the output objects
         self.create_dds_outputs(dds_prop)
         #self.create_analog_outputs(ao_prop)
@@ -215,13 +225,7 @@ class Arduino_DDS_n_chTab(DeviceTab):
         #self.auto_place_widgets(("Analog Outs",ao_widgets))
         #self.auto_place_widgets(("Digital Outs",do_widgets))
 
-        connection_object = self.settings['connection_table'].find_by_name(self.device_name)
-        connection_table_properties = connection_object.properties
-
-        self.com_port = connection_table_properties.get('com_port', None)
-        self.baud_rate = connection_table_properties.get('baud_rate', None)
-        self.default_baud_rate = connection_table_properties.get('default_baud_rate', None)
-        self.update_mode = connection_table_properties.get('update_mode', 'synchronous')
+        
 
         # Backward compat:
         blacs_connection =  str(connection_object.BLACS_connection)
@@ -241,7 +245,8 @@ class Arduino_DDS_n_chTab(DeviceTab):
         self.create_worker("main_worker",Arduino_DDS_n_chWorker,{'com_port':self.com_port,
                                                               'baud_rate': self.baud_rate,
                                                               'default_baud_rate': self.default_baud_rate,
-                                                              'update_mode': self.update_mode})
+                                                              'update_mode': self.update_mode,
+                                                              'num_DDS':self.num_DDS})
         self.primary_worker = "main_worker"
 
         # Set the capabilities of this device
@@ -273,6 +278,7 @@ class Arduino_DDS_n_chWorker(Worker):
         # For each DDS channel,
         for i in range(self.num_DDS):
             # and for each subchnl in the DDS,
+            print(b'@ %d\r\n'%i)
             self.connection.write(b'@ %d\r\n'%i)
             #if front_panel_values['channel %d'%i]['rampon'] == 1:
             #    ramplow = front_panel_values['channel %d'%i]['ramplow']
@@ -291,7 +297,9 @@ class Arduino_DDS_n_chWorker(Worker):
             command = b'f %f\r\n'%value
         else:
             raise TypeError(type)
+        print(command)
         self.connection.write(command)
+        print('done')
         # Now that a static update has been done, we'd better invalidate the saved STATIC_DATA:
         self.smart_cache['STATIC_DATA'] = None
         #print('end program_static()')
