@@ -38,7 +38,7 @@ class Pyncmaster(PulseBlaster_No_DDS):
     n_flags = 64
     #core_clock_freq = 20.0 #MHz
     @set_passed_properties({"connection_table_properties": ["clock_rate",'log_level']})
-    def __init__(self,clock_rate=20,log_level=logging.INFO,*args,**kwargs):
+    def __init__(self,clock_rate=20,log_level=logging.DEBUG,*args,**kwargs):
         #clock_defined = False
         #for k,v in kwargs.items():
         #    if k=='clock_rate':

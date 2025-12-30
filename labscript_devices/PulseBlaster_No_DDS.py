@@ -16,7 +16,7 @@ from labscript_devices.PulseBlaster import PulseBlaster, PulseBlasterParser
 from labscript import PseudoclockDevice, config
 
 import numpy as np
-
+import logging
 
 class PulseBlaster_No_DDS(PulseBlaster):
 
@@ -74,6 +74,8 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
         if not hasattr(self,'device_worker_class'):
             self.device_worker_class = PulseblasterNoDDSWorker
         DeviceTab.__init__(self,*args,**kwargs)
+
+        self.logger = logging.getLogger('BLACS.PyncmasterTab')
         
     def initialise_GUI(self):
         do_prop = {}
@@ -183,14 +185,18 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
         # When called with a queue, this function writes to the queue
         # when the pulseblaster is waiting. This indicates the end of
         # an experimental run.
+        self.logger.debug('executing status monitor...')
+        self.logger.debug('checking status with device worker...')
         self.status, waits_pending, time_based_shot_over = yield(self.queue_work(self._primary_worker,'check_status'))
-        
         if self.programming_scheme == 'pb_start/BRANCH':
+            self.logger.debug('done condition set to waiting')
             done_condition = self.status['waiting']
         elif self.programming_scheme == 'pb_stop_programming/STOP':
             done_condition = self.status['stopped']
+            self.logger.debug('done condition set to stopped')
             
         if time_based_shot_over is not None:
+            self.logger.debug('done condition set to value of time_based_shot_over')
             done_condition = time_based_shot_over
             
         if notify_queue is not None and done_condition and not waits_pending:
@@ -204,6 +210,9 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
                 # Not clear that on all models the outputs will be correct after being
                 # stopped this way, so we do program_manual with current values to be sure:
                 self.program_device()
+            print('done')
+        else:
+            print('not done')
         # Update widgets with new status
         for state in self.status_states:
             if self.status[state]:
