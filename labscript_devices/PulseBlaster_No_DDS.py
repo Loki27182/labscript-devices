@@ -185,18 +185,23 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
         # When called with a queue, this function writes to the queue
         # when the pulseblaster is waiting. This indicates the end of
         # an experimental run.
-        self.logger.debug('executing status monitor...')
-        self.logger.debug('checking status with device worker...')
+        #self.logger.debug('executing status monitor...')
+        #self.logger.debug('checking status with device worker...')
         self.status, waits_pending, time_based_shot_over = yield(self.queue_work(self._primary_worker,'check_status'))
+        #self.logger.debug('[stopped/reset/running/waiting] = [{st}, {re}, {ru}, {wa}]'.format(st=self.status['stopped'],
+        #                                                                                      re=self.status['reset'],
+        #                                                                                      ru=self.status['running'],
+        #                                                                                      wa=self.status['waiting']))
+        #self.logger.debug('waits: {w}'.format(w=waits_pending))
         if self.programming_scheme == 'pb_start/BRANCH':
-            self.logger.debug('done condition set to waiting')
+            #self.logger.debug('done condition set to waiting')
             done_condition = self.status['waiting']
         elif self.programming_scheme == 'pb_stop_programming/STOP':
             done_condition = self.status['stopped']
-            self.logger.debug('done condition set to stopped')
+            #self.logger.debug('done condition set to stopped')
             
         if time_based_shot_over is not None:
-            self.logger.debug('done condition set to value of time_based_shot_over')
+            #self.logger.debug('done condition set to value of time_based_shot_over')
             done_condition = time_based_shot_over
             
         if notify_queue is not None and done_condition and not waits_pending:
@@ -210,9 +215,14 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
                 # Not clear that on all models the outputs will be correct after being
                 # stopped this way, so we do program_manual with current values to be sure:
                 self.program_device()
-            print('done')
-        else:
-            print('not done')
+            #self.logger.debug('done')
+        #else:
+        #    if notify_queue is None:
+        #        self.logger.debug('not done a')
+        #    elif not done_condition:
+        #        self.logger.debug('not done b')
+        #    elif waits_pending:
+        #        self.logger.debug('not done c')
         # Update widgets with new status
         for state in self.status_states:
             if self.status[state]:
@@ -268,7 +278,7 @@ class PulseblasterNoDDSWorker(Worker):
         # The wait monitor device is expected to post such events, which we'll wait on:
         self.all_waits_finished = zprocess.Event('all_waits_finished')
         self.waits_pending = False
-    
+
         pb_select_board(self.board_number)
         pb_init()
         pb_core_clock(self.core_clock_freq)
