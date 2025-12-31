@@ -353,9 +353,10 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
     core_clock_freq = 20.0
     uberglobals =  globals()
     def init(self,uberglobals=uberglobals):
-        log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
+        #log_name = 'BLACS.%s_%s.worker'%("Pyncmaster","PyncmasterWorker") # Jeff's debugging code
         #self.logger = logging.getLogger(log_name) # Jeff's debugging code
-        self.logger = setup_logging(log_name,self.log_level)
+        self.secondary_logger = logging.getLogger('BLACS.PyncmasterWorkerSecondary')
+        self.secondary_logger.setLevel(logging.INFO)
 
         self.programming_scheme = 'pb_stop_programming/STOP'
         exec('global pb_read_status; from pynqapi import *',uberglobals)
@@ -363,7 +364,7 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         global h5py; import labscript_utils.h5_lock, h5py
         global zprocess; import zprocess
 
-        self.logger.debug('Initializing PyncmasterWorker:')
+        self.secondary_logger.debug('Initializing PyncmasterWorker:')
         #for k, v in self.__dict__.items():
         #    self.logger.debug(k + ": " + str(type(v)) + ": " + str(v))
 
@@ -383,9 +384,9 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
 
         pb_select_board(self.board_number)
         pb_init()
-        self.logger.debug(f'Setting Jane clock to {self.clock_rate}')
+        self.secondary_logger.debug(f'Setting Jane clock to {self.clock_rate}')
         self.core_clock_freq = pb_core_clock(self.clock_rate)
-        self.logger.debug(f'Jane clock set to {self.core_clock_freq[0]}')
+        self.secondary_logger.debug(f'Jane clock set to {self.core_clock_freq[0]}')
 
         # This is only set to True on a per-shot basis, so set it to False
         # for manual mode. Set associated attributes to None:
@@ -394,25 +395,26 @@ class PyncmasterWorker(PulseblasterNoDDSWorker):
         self.time_based_shot_end_time = None
 
     def check_status(self):
-        self.logger.debug('checking status') # Jeff's debugging code
+        self.secondary_logger.debug('checking status') # Jeff's debugging code
         if self.waits_pending:
-            self.logger.debug('waits are pending') # Jeff's debugging code
+            self.secondary_logger.debug('waits are pending') # Jeff's debugging code
             try:
-                self.logger.debug('waiting') # Jeff's debugging code
+                self.secondary_logger.debug('waiting') # Jeff's debugging code
                 self.all_waits_finished.wait(self.h5file, timeout=0)
                 self.waits_pending = False
             except zprocess.TimeoutError:
-                self.logger.debug('Timeout error') # Jeff's debugging code
+                self.secondary_logger.debug('Timeout error') # Jeff's debugging code
                 pass
         if self.time_based_shot_end_time is not None:
-            self.logger.debug('There is a time based shot') # Jeff's debugging code
+            self.secondary_logger.debug('There is a time based shot') # Jeff's debugging code
             import time
             time_based_shot_over = time.time() > self.time_based_shot_end_time
-            self.logger.debug('Is time based shot over?: %s'%str(time_based_shot_over)) # Jeff's debugging code
+            self.waits_pending = False
+            self.secondary_logger.debug('Is time based shot over?: %s'%str(time_based_shot_over)) # Jeff's debugging code
         else:
-            self.logger.debug('There is no time based shot') # Jeff's debugging code
+            self.secondary_logger.debug('There is no time based shot') # Jeff's debugging code
             time_based_shot_over = None
-        self.logger.debug('Returning pb_read_status') # Jeff's debugging code
+        self.secondary_logger.debug('Returning pb_read_status') # Jeff's debugging code
         return pb_read_status(), self.waits_pending, time_based_shot_over
 
     # @define_state(MODE_MANUAL|MODE_BUFFERED|MODE_TRANSITION_TO_BUFFERED|MODE_TRANSITION_TO_MANUAL,True)
